@@ -9,52 +9,41 @@
         </options>
     </header>
     <!--
-        Chapter 16's model: the Doomsday Device Supply Chain, quantified
-        (Figure 16.2), plus Chapter 10's vicious loop translated into stocks
-        and flows (Figure 16.1).
-        Same four stocks as Figure 4.1, now with a starting value on every
-        stock and an equation on every flow, plus the constants those
-        equations read: refinery capacity 100 tons/week, refining yield 0.9,
-        henchman-hours capacity 60 tons/week, and a 2-week transit delay.
+        Chapter 16's model from the book Systems Thinking for Supervillains:
+        the Doomsday Device Supply Chain, quantified, plus Chapter 10's vicious
+        loop translated into stocks and flows.
 
-        The supply chain's variables and equations are the same as in
-        doomsday-device-supply-chain.xmile (the Figure 4.1 model); keep the
-        two in step. Chapter 10's loop exists only here. Views, in order: Figure 16.2 as drawn (stocks, pipes,
-        and the losses drain; gen_chapter_16.py adds each stock's starting
-        value and each flow's equation around it); Figure 16.1's loop
-        translation; and the full supply chain with the auxiliaries and
-        connectors behind each equation.
+        The supply chain has four stocks, with a starting value on every stock
+        and an equation on every flow, plus the constants those equations read:
+        refinery capacity 100 tons/week, refining yield 0.9, henchman-hours
+        capacity 60 tons/week, and a 2-week transit delay.
 
-        Rendered for the book with: sfd, wrap 12, font-scale 2.0, which
-        writes quantified-supply-chain.svg from the first view. sfd renders
-        only the first view, so cld-to-sfd-translation.svg (Figure 16.1) is
-        rendered from a copy of this file with the loop view moved first,
-        with wrap 12 and font-scale 3.0 (larger, so its labels stay
-        readable in the figure's lower half on a Kindle).
+        The file has three views, in order: the supply chain's stocks and
+        pipes; Chapter 10's loop translated; and the full supply chain with the
+        auxiliaries and connectors behind each equation.
 
-        Chapter 10's loop (added 2026-10-27): warhead stockpile -> stockpile
-        shortfall against the deadline schedule -> ore-order urgency ->
-        rushed ore shipped -> Rushed Ore In Transit (the CLD's delay mark,
-        a co-flow beside Ore In Transit) -> corner-cutting -> refined
-        villainium quality -> assembly defect rate -> Defect Scrap, a drain
-        on the warhead stockpile. Effective stockpile growth is the
-        stockpile's net flow (Assembly Rate in, Defect Scrap out). The
-        schedule asks for exactly the 60 tons/week henchman-hours allow, so
-        the stockpile never falls behind, urgency stays 0, and the loop is
-        present but dormant: the eight-week table below is unchanged. Any
-        shortfall wakes it; e.g. assembly capped at 50 in weeks 2-4 leaves
-        the stockpile 30 tons behind with the loop cut, and 285 tons behind
-        and still falling by week 16 with it intact.
+        Chapter 10's loop: warhead stockpile -> stockpile shortfall against the
+        deadline schedule -> ore-order urgency -> rushed ore shipped -> Rushed
+        Ore In Transit (the loop's delay, a co-flow beside Ore In Transit) ->
+        corner-cutting -> refined villainium quality -> assembly defect rate ->
+        Defect Scrap, a drain on the warhead stockpile. Effective stockpile
+        growth is the stockpile's net flow (Assembly Rate in, Defect Scrap
+        out). The schedule asks for exactly the 60 tons/week henchman-hours
+        allow, so the stockpile never falls behind, urgency stays 0, and the
+        loop is present but dormant. Any shortfall wakes it; e.g. assembly
+        capped at 50 in weeks 2-4 leaves the stockpile 30 tons behind with the
+        loop cut, and 285 tons behind and still falling by week 16 with it
+        intact.
 
-        Values come from Ch. 16 unless a <doc> says PLACEHOLDER, meaning the
-        book never states it and it was chosen only so the model runs and
-        reproduces Ch. 16's eight-week table:
+        Values come from Chapter 16 unless a <doc> says PLACEHOLDER, meaning
+        the book never states it and it was chosen only so the model runs and
+        reproduces Chapter 16's eight-week table:
             refined villainium on hand 50, 71, 92, ..., 218 tons
             warhead stockpile          0, 60, 120, ..., 480 tons
-        PLACEHOLDER values in the loop (schedule 60 tons/week, full urgency
-        at a 60-ton shortfall, half quality on an all-rushed batch, defects
-        in proportion to lost quality) shape how fast the loop runs once
-        woken, not whether the table changes.
+        PLACEHOLDER values in the loop (schedule 60 tons/week, full urgency at
+        a 60-ton shortfall, half quality on an all-rushed batch, defects in
+        proportion to lost quality) shape how fast the loop runs once woken,
+        not whether the table changes.
 
         Refining converts delivered ore at 90% yield. A stock-and-flow pipe
         conserves what it carries, so the lost 10% leaves Ore In Transit
@@ -75,7 +64,7 @@
                 <units>tons</units>
             </stock>
             <stock name="Ore In Transit">
-                <doc>Mined ore on its way to the refinery: the shipping stage. Starts at the steady state for the transit delay, mining rate x transit time (180 tons at Figure 16.2's 2 weeks and 90 tons/week), so deliveries hold at Ch. 16's steady 90 tons/week; written as an equation so it stays at steady state when Ch. 18's sensitivity analysis varies the transit time.</doc>
+                <doc>Mined ore on its way to the refinery: the shipping stage. Starts at the steady state for the transit delay, mining rate x transit time (180 tons at Figure 16.1's 2 weeks and 90 tons/week), so deliveries hold at Ch. 16's steady 90 tons/week; written as an equation so it stays at steady state when Ch. 18's sensitivity analysis varies the transit time.</doc>
                 <eqn>Mining_Rate * Transit_Time</eqn>
                 <inflow>Mining_Rate</inflow>
                 <outflow>Refining_Rate</outflow>
@@ -231,13 +220,9 @@
             </aux>
         </variables>
         <views>
-            <!-- Figure 16.1 as drawn: the four stocks in a two-row staircase (the
-                 refining pipe runs down between the rows), the three pipes between
-                 them, and the refining-losses drain leaving Ore In Transit to the
-                 right. Two rows rather than one so the labels can be set large
-                 enough to read on a Kindle. The starting value on each stock and
-                 the equation on each flow are added around this view by
-                 gen_chapter_16.py. -->
+            <!-- The supply chain: the four stocks in a two-row staircase (the refining
+                 pipe runs down between the rows), the three pipes between them,
+                 and the refining-losses drain leaving Ore In Transit to the right. -->
             <view type="stock_flow" width="720" height="420">
                 <stock name="Ore In Ground" x="90" y="90" width="120" height="60"/>
                 <stock name="Ore In Transit" x="380" y="90" width="120" height="60"/>
@@ -268,16 +253,12 @@
                     </pts>
                 </flow>
             </view>
-            <!-- Figure 16.1, the translation of Chapter 10's CLD: only the loop's
-                 own elements, laid out as the loop runs (clockwise from the
-                 stockpile at bottom left). Constants and the rest of the supply
-                 chain are left off; the stockpile's inflow arrives from a cloud
-                 here because Refined Villainium On Hand isn't in this view.
-                 Effective Stockpile Growth isn't drawn: it is the net of the
-                 stockpile's two pipes, which gen_chapter_16.py brackets and
-                 labels. sfd renders only the first view, so the figure is
-                 rendered from a copy with this view moved first (see the
-                 header). -->
+            <!-- Chapter 10's loop translated: only the loop's own elements, laid out as
+                 the loop runs (clockwise from the stockpile at bottom left).
+                 Constants and the rest of the supply chain are left off; the
+                 stockpile's inflow arrives from a cloud here because Refined
+                 Villainium On Hand isn't in this view. Effective Stockpile Growth
+                 isn't drawn: it is the net of the stockpile's two pipes. -->
             <view type="stock_flow" width="520" height="420">
                 <stock name="Rushed Ore In Transit" x="290" y="80" width="130" height="64"/>
                 <stock name="Warhead Stockpile" x="250" y="420" width="130" height="64"/>
@@ -318,9 +299,8 @@
                 <connector uid="6" angle="270"><from>Refined_Villainium_Quality</from><to>Assembly_Defect_Rate</to></connector>
                 <connector uid="7" angle="270"><from>Assembly_Defect_Rate</from><to>Defect_Scrap</to></connector>
             </view>
-            <!-- The full model: the same row, plus every constant wired by a
-                 connector to the flow it governs. (sfd renders only the
-                 first view.) -->
+            <!-- The full model: every stock and flow, plus every constant wired by a
+                 connector to the flow it governs. -->
             <view type="stock_flow" width="1060" height="460">
                 <stock name="Ore In Ground" x="110" y="230" width="110" height="60"/>
                 <stock name="Ore In Transit" x="370" y="230" width="110" height="60"/>
