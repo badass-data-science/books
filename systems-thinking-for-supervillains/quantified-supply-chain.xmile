@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xmile version="1.0" xmlns="http://docs.oasis-open.org/xmile/ns/XMILE/v1.0">
+    <header>
+        <name>Doomsday Device Supply Chain, Quantified</name>
+        <vendor>Systems Thinking for Supervillains</vendor>
+        <product version="1.0" lang="en">hand-authored</product>
+        <options>
+            <uses_arrays maximum_dimensions="0"/>
+        </options>
+    </header>
+    <!--
+        Chapter 16's model: the Doomsday Device Supply Chain, quantified
+        (Figure 16.2), plus Chapter 10's vicious loop translated into stocks
+        and flows (Figure 16.1).
+        Same four stocks as Figure 4.1, now with a starting value on every
+        stock and an equation on every flow, plus the constants those
+        equations read: refinery capacity 100 tons/week, refining yield 0.9,
+        henchman-hours capacity 60 tons/week, and a 2-week transit delay.
+
+        The supply chain's variables and equations are the same as in
+        doomsday-device-supply-chain.xmile (the Figure 4.1 model); keep the
+        two in step. Chapter 10's loop exists only here. Views, in order: Figure 16.2 as drawn (stocks, pipes,
+        and the losses drain; gen_chapter_16.py adds each stock's starting
+        value and each flow's equation around it); Figure 16.1's loop
+        translation; and the full supply chain with the auxiliaries and
+        connectors behind each equation.
+
+        Rendered for the book with: sfd, wrap 12, font-scale 2.0, which
+        writes quantified-supply-chain.svg from the first view. sfd renders
+        only the first view, so cld-to-sfd-translation.svg (Figure 16.1) is
+        rendered from a copy of this file with the loop view moved first,
+        with wrap 12 and font-scale 3.0 (larger, so its labels stay
+        readable in the figure's lower half on a Kindle).
+
+        Chapter 10's loop (added 2026-10-27): warhead stockpile -> stockpile
+        shortfall against the deadline schedule -> ore-order urgency ->
+        rushed ore shipped -> Rushed Ore In Transit (the CLD's delay mark,
+        a co-flow beside Ore In Transit) -> corner-cutting -> refined
+        villainium quality -> assembly defect rate -> Defect Scrap, a drain
+        on the warhead stockpile. Effective stockpile growth is the
+        stockpile's net flow (Assembly Rate in, Defect Scrap out). The
+        schedule asks for exactly the 60 tons/week henchman-hours allow, so
+        the stockpile never falls behind, urgency stays 0, and the loop is
+        present but dormant: the eight-week table below is unchanged. Any
+        shortfall wakes it; e.g. assembly capped at 50 in weeks 2-4 leaves
+        the stockpile 30 tons behind with the loop cut, and 285 tons behind
+        and still falling by week 16 with it intact.
+
+        Values come from Ch. 16 unless a <doc> says PLACEHOLDER, meaning the
+        book never states it and it was chosen only so the model runs and
+        reproduces Ch. 16's eight-week table:
+            refined villainium on hand 50, 71, 92, ..., 218 tons
+            warhead stockpile          0, 60, 120, ..., 480 tons
+        PLACEHOLDER values in the loop (schedule 60 tons/week, full urgency
+        at a 60-ton shortfall, half quality on an all-rushed batch, defects
+        in proportion to lost quality) shape how fast the loop runs once
+        woken, not whether the table changes.
+
+        Refining converts delivered ore at 90% yield. A stock-and-flow pipe
+        conserves what it carries, so the lost 10% leaves Ore In Transit
+        through a separate Refining Losses drain.
+    -->
+    <sim_specs method="Euler" time_units="Weeks">
+        <start>0</start>
+        <stop>8</stop>
+        <dt>1</dt>
+    </sim_specs>
+    <model>
+        <variables>
+            <stock name="Ore In Ground">
+                <doc>Unmined villainium ore ("large, slow-depleting" in Figure 16.1). PLACEHOLDER initial value: the book never sizes the deposit.</doc>
+                <eqn>10000</eqn>
+                <outflow>Mining_Rate</outflow>
+                <non_negative/>
+                <units>tons</units>
+            </stock>
+            <stock name="Ore In Transit">
+                <doc>Mined ore on its way to the refinery: the shipping stage. Starts at the steady state for the transit delay, mining rate x transit time (180 tons at Figure 16.2's 2 weeks and 90 tons/week), so deliveries hold at Ch. 16's steady 90 tons/week; written as an equation so it stays at steady state when Ch. 18's sensitivity analysis varies the transit time.</doc>
+                <eqn>Mining_Rate * Transit_Time</eqn>
+                <inflow>Mining_Rate</inflow>
+                <outflow>Refining_Rate</outflow>
+                <outflow>Refining_Losses</outflow>
+                <non_negative/>
+                <units>tons</units>
+            </stock>
+            <stock name="Refined Villainium On Hand">
+                <doc>Refined villainium in the warehouse. Initial 50 tons (Ch. 16).</doc>
+                <eqn>50</eqn>
+                <inflow>Refining_Rate</inflow>
+                <outflow>Assembly_Rate</outflow>
+                <non_negative/>
+                <units>tons</units>
+            </stock>
+            <stock name="Warhead Stockpile">
+                <doc>Assembled warheads, in tons of refined villainium assembled (Ch. 9, 16, and 17 all call this the warhead stockpile).</doc>
+                <eqn>0</eqn>
+                <inflow>Assembly_Rate</inflow>
+                <outflow>Defect_Scrap</outflow>
+                <non_negative/>
+                <units>tons</units>
+            </stock>
+            <stock name="Rushed Ore In Transit">
+                <doc>Chapter 10's loop, translated (Ch. 16): the share of Ore In Transit that was ordered under urgency, tracked as a co-flow beside it. This stock IS the CLD's delay mark on ore-order urgency -> corner-cutting: rushed ore enters it when it's shipped and leaves when it reaches the refinery, about the transit time later. Starts empty: no order this quarter was rushed.</doc>
+                <eqn>0</eqn>
+                <inflow>Rushed_Ore_Shipped</inflow>
+                <outflow>Rushed_Ore_Delivered</outflow>
+                <non_negative/>
+                <units>tons</units>
+            </stock>
+            <flow name="Mining Rate">
+                <doc>PLACEHOLDER: set equal to Ch. 16's steady 90 tons/week of arriving ore, so the transit pipeline neither fills nor drains this quarter.</doc>
+                <eqn>90</eqn>
+                <non_negative/>
+                <units>tons/Weeks</units>
+            </flow>
+            <flow name="Refining Rate">
+                <doc>Ch. 16: refining_rate = min(ore_available, refinery_capacity) x yield = min(90, 100) x 0.9 = 81 tons/week.</doc>
+                <eqn>Ore_Delivered * Refining_Yield</eqn>
+                <non_negative/>
+                <units>tons/Weeks</units>
+            </flow>
+            <flow name="Refining Losses">
+                <doc>The 10% of delivered ore that refining doesn't recover, leaving the boundary as slag. Implied by Ch. 16's 90% yield; a separate drain because a pipe conserves what it carries.</doc>
+                <eqn>Ore_Delivered * (1 - Refining_Yield)</eqn>
+                <non_negative/>
+                <units>tons/Weeks</units>
+            </flow>
+            <flow name="Assembly Rate">
+                <doc>Ch. 16: assembly_rate = min(refined_villainium_available, henchman_hours_capacity). "Available" includes this week's refining output, matching Ch. 16's hand-worked table (week 1: min(50 + 81, 60) = 60).</doc>
+                <eqn>MIN((Refined_Villainium_On_Hand + Refining_Rate * Time_Step) / Time_Step, Henchman_Hours_Capacity)</eqn>
+                <non_negative/>
+                <units>tons/Weeks</units>
+            </flow>
+            <flow name="Rushed Ore Shipped">
+                <doc>Ore shipped under urgency: the week's mining, times how urgent the order was. Rushing changes how ore is handled, not how much is mined.</doc>
+                <eqn>Mining_Rate * Ore_Order_Urgency</eqn>
+                <non_negative/>
+                <units>tons/Weeks</units>
+            </flow>
+            <flow name="Rushed Ore Delivered">
+                <doc>Rushed ore reaching the refinery: its share of each week's deliveries.</doc>
+                <eqn>Ore_Delivered * Corner_Cutting</eqn>
+                <non_negative/>
+                <units>tons/Weeks</units>
+            </flow>
+            <flow name="Defect Scrap">
+                <doc>Assembled warheads that fail inspection and are scrapped, leaving the stockpile (to a sink). Effective stockpile growth is the stockpile's net flow: Assembly Rate in, minus this.</doc>
+                <eqn>Assembly_Rate * Assembly_Defect_Rate</eqn>
+                <non_negative/>
+                <units>tons/Weeks</units>
+            </flow>
+            <aux name="Scheduled Output">
+                <doc>PLACEHOLDER: the assembly deadlines' required pace (Ch. 1's deadlines). Set equal to the henchman-hours cap, so this quarter's schedule has zero slack: the stockpile keeps pace exactly, and any shortfall at all opens a gap.</doc>
+                <eqn>60</eqn>
+                <units>tons/Weeks</units>
+            </aux>
+            <aux name="Scheduled Stockpile">
+                <doc>What the deadlines say the stockpile should hold by now.</doc>
+                <eqn>Scheduled_Output * TIME</eqn>
+                <units>tons</units>
+            </aux>
+            <aux name="Stockpile Shortfall">
+                <doc>How far the stockpile is behind schedule; zero when on or ahead of it.</doc>
+                <eqn>MAX(0, Scheduled_Stockpile - Warhead_Stockpile)</eqn>
+                <units>tons</units>
+            </aux>
+            <aux name="Shortfall For Full Urgency">
+                <doc>PLACEHOLDER: a shortfall of one week's scheduled output makes every order a rush order.</doc>
+                <eqn>60</eqn>
+                <units>tons</units>
+            </aux>
+            <aux name="Ore Order Urgency">
+                <doc>Ch. 10's "ore-order urgency": 0 (no rush) to 1 (every order rushed), rising with the shortfall. Stockpile -> urgency is the CLD's minus link.</doc>
+                <eqn>MIN(1, Stockpile_Shortfall / Shortfall_For_Full_Urgency)</eqn>
+                <units>dmnl</units>
+            </aux>
+            <aux name="Corner Cutting">
+                <doc>Ch. 10's "corner-cutting": the share of ore reaching the refinery that was rushed, on which the refinery cuts corners. Read off the co-flow, so it lags urgency by the transit time.</doc>
+                <eqn>Rushed_Ore_In_Transit / MAX(Ore_In_Transit, 1)</eqn>
+                <units>dmnl</units>
+            </aux>
+            <aux name="Quality Loss From Corner Cutting">
+                <doc>PLACEHOLDER: refining an all-rushed batch halves its quality.</doc>
+                <eqn>0.5</eqn>
+                <units>dmnl</units>
+            </aux>
+            <aux name="Refined Villainium Quality">
+                <doc>Ch. 10's "refined villainium quality", 1 = full spec. A simplification: it treats each week's refining as what assembly uses that week; a fuller model would carry quality as a co-flow beside Refined Villainium On Hand.</doc>
+                <eqn>1 - Quality_Loss_From_Corner_Cutting * Corner_Cutting</eqn>
+                <units>dmnl</units>
+            </aux>
+            <aux name="Assembly Defect Rate">
+                <doc>Ch. 10's "assembly defect rate": PLACEHOLDER, defects in proportion to lost quality; zero at full spec, matching Ch. 16's table (every assembled ton reaches the stockpile).</doc>
+                <eqn>1 - Refined_Villainium_Quality</eqn>
+                <units>dmnl</units>
+            </aux>
+            <aux name="Effective Stockpile Growth">
+                <doc>Ch. 10's "effective stockpile growth": the stockpile's net flow, assembly in minus scrap out. Reported, not used by any equation; the stock integrates its two flows directly.</doc>
+                <eqn>Assembly_Rate - Defect_Scrap</eqn>
+                <units>tons/Weeks</units>
+            </aux>
+            <aux name="Ore Delivered">
+                <doc>Ore reaching the refinery each week: what's in transit, released over the transit time, never more than the refinery can take (Ch. 16's min(ore_available, refinery_capacity)).</doc>
+                <eqn>MIN(Ore_In_Transit / Transit_Time, Refinery_Capacity)</eqn>
+                <units>tons/Weeks</units>
+            </aux>
+            <aux name="Transit Time">
+                <doc>Figure 16.1: a 2-week transit delay.</doc>
+                <eqn>2</eqn>
+                <units>Weeks</units>
+            </aux>
+            <aux name="Refinery Capacity">
+                <doc>Ch. 16: 100 tons/week.</doc>
+                <eqn>100</eqn>
+                <units>tons/Weeks</units>
+            </aux>
+            <aux name="Refining Yield">
+                <doc>Ch. 16: 90% conversion yield. An honest guess, not a measured fact (Ch. 16).</doc>
+                <eqn>0.9</eqn>
+                <units>dmnl</units>
+            </aux>
+            <aux name="Henchman Hours Capacity">
+                <doc>Ch. 16: assembly is capped at 60 tons/week by henchman-hours, downstream of the Bureau of Villainous Workplace Standards' rest-break mandate.</doc>
+                <eqn>60</eqn>
+                <units>tons/Weeks</units>
+            </aux>
+            <aux name="Time Step">
+                <doc>One simulation step, equal to sim_specs dt. Spelled out as a named variable rather than XMILE's DT builtin because PySD (as of 3.14), the Python route Ch. 17 uses, does not recognize DT when reading XMILE. Change both together.</doc>
+                <eqn>1</eqn>
+                <units>Weeks</units>
+            </aux>
+        </variables>
+        <views>
+            <!-- Figure 16.1 as drawn: the four stocks in a two-row staircase (the
+                 refining pipe runs down between the rows), the three pipes between
+                 them, and the refining-losses drain leaving Ore In Transit to the
+                 right. Two rows rather than one so the labels can be set large
+                 enough to read on a Kindle. The starting value on each stock and
+                 the equation on each flow are added around this view by
+                 gen_chapter_16.py. -->
+            <view type="stock_flow" width="720" height="420">
+                <stock name="Ore In Ground" x="90" y="90" width="120" height="60"/>
+                <stock name="Ore In Transit" x="380" y="90" width="120" height="60"/>
+                <stock name="Refined Villainium On Hand" x="380" y="340" width="140" height="70"/>
+                <stock name="Warhead Stockpile" x="680" y="340" width="120" height="60"/>
+                <flow name="Mining Rate" x="235" y="90">
+                    <pts>
+                        <pt x="150" y="90"/>
+                        <pt x="320" y="90"/>
+                    </pts>
+                </flow>
+                <flow name="Refining Rate" x="380" y="215">
+                    <pts>
+                        <pt x="380" y="120"/>
+                        <pt x="380" y="305"/>
+                    </pts>
+                </flow>
+                <flow name="Refining Losses" x="535" y="90">
+                    <pts>
+                        <pt x="440" y="90"/>
+                        <pt x="630" y="90"/>
+                    </pts>
+                </flow>
+                <flow name="Assembly Rate" x="535" y="340">
+                    <pts>
+                        <pt x="450" y="340"/>
+                        <pt x="620" y="340"/>
+                    </pts>
+                </flow>
+            </view>
+            <!-- Figure 16.1, the translation of Chapter 10's CLD: only the loop's
+                 own elements, laid out as the loop runs (clockwise from the
+                 stockpile at bottom left). Constants and the rest of the supply
+                 chain are left off; the stockpile's inflow arrives from a cloud
+                 here because Refined Villainium On Hand isn't in this view.
+                 Effective Stockpile Growth isn't drawn: it is the net of the
+                 stockpile's two pipes, which gen_chapter_16.py brackets and
+                 labels. sfd renders only the first view, so the figure is
+                 rendered from a copy with this view moved first (see the
+                 header). -->
+            <view type="stock_flow" width="520" height="420">
+                <stock name="Rushed Ore In Transit" x="290" y="80" width="130" height="64"/>
+                <stock name="Warhead Stockpile" x="250" y="420" width="130" height="64"/>
+                <flow name="Rushed Ore Shipped" x="140" y="80">
+                    <pts>
+                        <pt x="50" y="80"/>
+                        <pt x="225" y="80"/>
+                    </pts>
+                </flow>
+                <flow name="Rushed Ore Delivered" x="440" y="80">
+                    <pts>
+                        <pt x="355" y="80"/>
+                        <pt x="530" y="80"/>
+                    </pts>
+                </flow>
+                <flow name="Assembly Rate" x="100" y="420">
+                    <pts>
+                        <pt x="10" y="420"/>
+                        <pt x="185" y="420"/>
+                    </pts>
+                </flow>
+                <flow name="Defect Scrap" x="400" y="420">
+                    <pts>
+                        <pt x="315" y="420"/>
+                        <pt x="530" y="420"/>
+                    </pts>
+                </flow>
+                <aux name="Stockpile Shortfall" x="120" y="300"/>
+                <aux name="Ore Order Urgency" x="120" y="180"/>
+                <aux name="Corner Cutting" x="400" y="170"/>
+                <aux name="Refined Villainium Quality" x="400" y="250"/>
+                <aux name="Assembly Defect Rate" x="400" y="330"/>
+                <connector uid="1" angle="135"><from>Warhead_Stockpile</from><to>Stockpile_Shortfall</to></connector>
+                <connector uid="2" angle="90"><from>Stockpile_Shortfall</from><to>Ore_Order_Urgency</to></connector>
+                <connector uid="3" angle="70"><from>Ore_Order_Urgency</from><to>Rushed_Ore_Shipped</to></connector>
+                <connector uid="4" angle="-40"><from>Rushed_Ore_In_Transit</from><to>Corner_Cutting</to></connector>
+                <connector uid="5" angle="270"><from>Corner_Cutting</from><to>Refined_Villainium_Quality</to></connector>
+                <connector uid="6" angle="270"><from>Refined_Villainium_Quality</from><to>Assembly_Defect_Rate</to></connector>
+                <connector uid="7" angle="270"><from>Assembly_Defect_Rate</from><to>Defect_Scrap</to></connector>
+            </view>
+            <!-- The full model: the same row, plus every constant wired by a
+                 connector to the flow it governs. (sfd renders only the
+                 first view.) -->
+            <view type="stock_flow" width="1060" height="460">
+                <stock name="Ore In Ground" x="110" y="230" width="110" height="60"/>
+                <stock name="Ore In Transit" x="370" y="230" width="110" height="60"/>
+                <stock name="Refined Villainium On Hand" x="660" y="230" width="170" height="60"/>
+                <stock name="Warhead Stockpile" x="950" y="230" width="130" height="60"/>
+                <flow name="Mining Rate" x="240" y="230">
+                    <pts>
+                        <pt x="165" y="230"/>
+                        <pt x="315" y="230"/>
+                    </pts>
+                </flow>
+                <flow name="Refining Rate" x="510" y="230">
+                    <pts>
+                        <pt x="425" y="230"/>
+                        <pt x="575" y="230"/>
+                    </pts>
+                </flow>
+                <flow name="Refining Losses" x="400" y="120">
+                    <pts>
+                        <pt x="400" y="200"/>
+                        <pt x="400" y="40"/>
+                    </pts>
+                </flow>
+                <flow name="Assembly Rate" x="815" y="230">
+                    <pts>
+                        <pt x="745" y="230"/>
+                        <pt x="885" y="230"/>
+                    </pts>
+                </flow>
+                <aux name="Refining Yield" x="470" y="70"/>
+                <aux name="Ore Delivered" x="520" y="340"/>
+                <aux name="Transit Time" x="410" y="410"/>
+                <aux name="Refinery Capacity" x="630" y="410"/>
+                <aux name="Henchman Hours Capacity" x="815" y="110"/>
+                <connector uid="1" angle="0"><from>Ore_In_Transit</from><to>Ore_Delivered</to></connector>
+                <connector uid="2" angle="0"><from>Transit_Time</from><to>Ore_Delivered</to></connector>
+                <connector uid="3" angle="180"><from>Refinery_Capacity</from><to>Ore_Delivered</to></connector>
+                <connector uid="4" angle="90"><from>Ore_Delivered</from><to>Refining_Rate</to></connector>
+                <connector uid="5" angle="270"><from>Refining_Yield</from><to>Refining_Rate</to></connector>
+                <connector uid="6" angle="120"><from>Ore_Delivered</from><to>Refining_Losses</to></connector>
+                <connector uid="7" angle="180"><from>Refining_Yield</from><to>Refining_Losses</to></connector>
+                <connector uid="8" angle="270"><from>Henchman_Hours_Capacity</from><to>Assembly_Rate</to></connector>
+                <connector uid="9" angle="0"><from>Refined_Villainium_On_Hand</from><to>Assembly_Rate</to></connector>
+                <connector uid="10" angle="0"><from>Refining_Rate</from><to>Assembly_Rate</to></connector>
+            </view>
+        </views>
+    </model>
+</xmile>
